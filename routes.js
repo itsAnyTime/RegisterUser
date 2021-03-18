@@ -24,31 +24,39 @@ router.post('/create-user', [
         res.redirect('/user');
     } else {
         // res.redirect('/create-user')
-        bcrypt.hash(req.body.password, 10, (err, hash) => {
-            if (err) {
-                 res.json({
-                    error: err
+        // part to avoid doubled email registrations
+        User.find({email: req.body.email}).exec().then(user => {
+            if(user.length >= 1) {
+                return res.status(409).json({  // test without return
+                    message: "Mail exists" // {"message":"Mail exists"} if user mail is already in database
                 })
             } else {
-                const user = new User({
-                    name: req.body.name,
-                    email: req.body.email,
-                    password: hash
-                });
-                user.save().then(result => {
-                    const userName = result.name;
-                    res.render("welcome", {userName})
-                }).catch(err => {
-                    res.json({
-                        error: err
-                    })
+                bcrypt.hash(req.body.password, 10, (err, hash) => {
+                    if (err) {
+                         res.json({
+                            error: err
+                        })
+                    } else {
+                        const user = new User({
+                            name: req.body.name,
+                            email: req.body.email,
+                            password: hash
+                        });
+                        user.save().then(result => {
+                            const userName = result.name;
+                            res.render("welcome", {userName})
+                        }).catch(err => {
+                            // res.json({
+                                // error: err
+                                res.status(500).json({error:err})
+                            // })
+                        })
+                    }
                 })
             }
         })
     }
 });
-
-
 
 router.get('/user', function (req, res) {
     res.render('user', { errors: req.session.errors });
@@ -57,6 +65,5 @@ router.get('/user', function (req, res) {
 router.get('/create-user', function (req, res) {
     res.render('user');
 });
-
 
 module.exports = router;
